@@ -45,7 +45,7 @@ ai-blog-generator-interview-jaiprathikreddysoda/
 
 Clone the repo to your machine:
 ```bash
-git clone https://github.com/<your-username>/ai-blog-generator-interview-jaiprathikreddysoda.git
+git clone https://github.com/JaiPrathikReddySoda/ai-blog-generator-interview-jaiprathikreddysoda.git
 cd ai-blog-generator-interview-jaiprathikreddysoda
 ```
 
@@ -54,7 +54,7 @@ cd ai-blog-generator-interview-jaiprathikreddysoda
 Create and activate a virtual environment to keep dependencies isolated:
 ```bash
 python3 -m venv venv
-source venv/bin/activate         # (On Windows: venv\Scripts\activate)
+source venv/bin/activate         
 ```
 
 ### 3. Install Required Packages
@@ -76,8 +76,8 @@ Set up your `.env` file for API keys and settings:
   ```
   OPENAI_API_KEY=sk-...
   OPENAI_BLOG_MODEL=gpt-4o
+  MONGO_URI=mongodb+srv://..
   ```
-  *(You can use any supported OpenAI model, but `gpt-4o` gives the best results!)*
 
 ---
 

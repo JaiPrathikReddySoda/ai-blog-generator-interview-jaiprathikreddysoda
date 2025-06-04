@@ -8,6 +8,10 @@ import markdown2
 import pytz
 from bson.objectid import ObjectId
 from flask import Flask, request, redirect, render_template_string, jsonify
+import logging
+
+# ---- LOGGING SETUP ----
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 app = Flask(__name__)
 start_scheduler()  # Launch the background scheduler for automated blogs
@@ -28,19 +32,30 @@ def dashboard():
     if request.method == "POST":
         keyword = request.form.get("keyword")
         if keyword:
+            logging.info(f"Manual blog generation requested for keyword: '{keyword}'")
             # Track user-submitted keywords for analytics/auditing
             os.makedirs("data", exist_ok=True)
             with open("data/keywords.txt", "a") as f:
                 f.write(f"{keyword.strip()}\n")
             # Generate blog content via OpenAI
-            seo_data = get_seo_data(keyword)
-            title, blog = generate_blog_post(keyword, seo_data)
+            try:
+                seo_data = get_seo_data(keyword)
+                title, blog = generate_blog_post(keyword, seo_data)
+                logging.info(f"Generated manual blog for '{keyword}'.")
+            except Exception as e:
+                logging.error(f"Error generating manual blog for '{keyword}': {e}")
+                return f"Error generating blog for '{keyword}'."
             # Save blog as a local file and in MongoDB (marked as manual)
             os.makedirs("posts", exist_ok=True)
             filename = f"posts/manual_{keyword.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(blog)
-            post_id = save_post_to_mongo(keyword, seo_data, blog, title=title, source="manual")
+            try:
+                post_id = save_post_to_mongo(keyword, seo_data, blog, title=title, source="manual")
+                logging.info(f"Manual blog saved to MongoDB with ID: {post_id}")
+            except Exception as e:
+                logging.error(f"Error saving manual blog to MongoDB: {e}")
+                return f"Error saving blog for '{keyword}'."
             return redirect(f"/preview/{post_id}")
 
     # Render dashboard
@@ -79,12 +94,16 @@ def scheduled_blogs_today():
     """
     Card-based page displaying today's automated blog post(s) created by the scheduler (source="scheduler").
     """
-    posts = get_trending_blogs_today()
-    utc_today = datetime.utcnow().date()
-    for post in posts:
-        post["date_pacific"] = utc_to_pacific(post["date"])
-        post["is_today"] = post["date"].date() == utc_today
-
+    try:
+        posts = get_trending_blogs_today()
+        utc_today = datetime.utcnow().date()
+        for post in posts:
+            post["date_pacific"] = utc_to_pacific(post["date"])
+            post["is_today"] = post["date"].date() == utc_today
+        logging.info(f"Fetched {len(posts)} scheduled (automated) blogs for today.")
+    except Exception as e:
+        logging.error(f"Error fetching scheduled blogs: {e}")
+        posts = []
     return render_template_string("""
     <!DOCTYPE html>
     <html>
@@ -124,12 +143,16 @@ def blog_archive():
     """
     Blog archive page. Lists all blogs (manual and automated), in card format, sorted by date.
     """
-    posts = get_all_blogs()
-    utc_today = datetime.utcnow().date()
-    for post in posts:
-        post["date_pacific"] = utc_to_pacific(post["date"])
-        post["is_today"] = post["date"].date() == utc_today
-
+    try:
+        posts = get_all_blogs()
+        utc_today = datetime.utcnow().date()
+        for post in posts:
+            post["date_pacific"] = utc_to_pacific(post["date"])
+            post["is_today"] = post["date"].date() == utc_today
+        logging.info(f"Fetched blog archive with {len(posts)} posts.")
+    except Exception as e:
+        logging.error(f"Error fetching blog archive: {e}")
+        posts = []
     return render_template_string("""
     <!DOCTYPE html>
     <html>
@@ -177,8 +200,10 @@ def preview_post(id):
     try:
         post = collection.find_one({"_id": ObjectId(id)})
         if not post:
+            logging.error(f"No blog post found for ID '{id}'.")
             return f"No blog post found for ID '{id}'."
-    except Exception:
+    except Exception as e:
+        logging.error(f"Invalid blog post ID: {e}")
         return f"Invalid blog post ID."
     # Strip the first heading line if it matches the title
     markdown_content = post.get("content", "").strip()
@@ -188,9 +213,8 @@ def preview_post(id):
     title = post.get("title", "Untitled")
     pacific_time = utc_to_pacific(post.get("date"))
     keyword = post.get("keyword", "")
-    blog_source = post.get("source", "")  # <-- Use different variable name, not "source"
+    blog_source = post.get("source", "")
     html = markdown2.markdown(markdown_content)
-    # Main preview card UI
     return render_template_string("""
     <!DOCTYPE html>
     <html>
@@ -237,14 +261,50 @@ def api_generate():
     """
     keyword = request.args.get("keyword")
     if not keyword:
+        logging.error("API call to /generate missing 'keyword' param.")
         return jsonify({"error": "Missing keyword"}), 400
-    seo_data = get_seo_data(keyword)
-    title, content = generate_blog_post(keyword, seo_data)
-    return jsonify({
-        "title": title,
-        "content": content,
-        "seo": seo_data
-    })
+    try:
+        seo_data = get_seo_data(keyword)
+        title, content = generate_blog_post(keyword, seo_data)
+        logging.info(f"API blog generated for keyword '{keyword}'.")
+        return jsonify({
+            "title": title,
+            "content": content,
+            "seo": seo_data
+        })
+    except Exception as e:
+        logging.error(f"Error generating API blog for '{keyword}': {e}")
+        return jsonify({"error": "Failed to generate blog"}), 500
+
+@app.route("/api/posts", methods=["GET"])
+def api_get_all_posts():
+    """
+    API endpoint: Returns all blog posts (manual and automated) as JSON.
+    Optional query parameters:
+        - source: 'manual' or 'scheduler' to filter
+        - keyword: filter by keyword (case-insensitive substring)
+        - limit: number of posts to return (default 50)
+    """
+    try:
+        source = request.args.get("source")
+        keyword = request.args.get("keyword")
+        limit = int(request.args.get("limit", 50))
+        # Build MongoDB query
+        query = {}
+        if source:
+            query["source"] = source
+        if keyword:
+            query["keyword"] = {"$regex": keyword, "$options": "i"}
+        # Fetch posts
+        posts = list(collection.find(query).sort("date", -1).limit(limit))
+        for post in posts:
+            post["_id"] = str(post["_id"])
+            post["date"] = post["date"].isoformat() if post.get("date") else None
+        logging.info(f"Returned {len(posts)} posts from /api/posts endpoint.")
+        return jsonify(posts)
+    except Exception as e:
+        logging.error(f"Error in /api/posts: {e}")
+        return jsonify({"error": "Failed to fetch posts"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)

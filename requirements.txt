@@ -1,0 +1,6 @@
+Flask
+openai
+python-dotenv
+markdown2
+pymongo
+apscheduler

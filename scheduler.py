@@ -10,7 +10,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Change this keyword as needed for your demo/testing
-PREDEFINED_KEYWORD = "The Creator Economy: Monetizing Your Passions"
+PREDEFINED_KEYWORD = "The Metaverse for Work"
 
 def write_daily_post():
     """

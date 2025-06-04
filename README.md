@@ -1,3 +1,4 @@
+
 # AI Blog Generator
 
 ## Overview
@@ -16,6 +17,7 @@ Whether you're a developer, content manager, or tech enthusiast—this project l
 - **Affiliate Link Support:** Blogs include contextual recommendations with placeholder links.
 - **Markdown Output:** All blogs are generated in Markdown, making them easy to style or publish anywhere.
 - **Extensible Architecture:** Code is modular—easy to update, extend, or connect to real SEO APIs and databases.
+- **RESTful API:** Endpoints available for programmatic access to blog generation and retrieval.
 
 ---
 
@@ -43,7 +45,6 @@ ai-blog-generator-interview-jaiprathikreddysoda/
 
 ### 1. Clone the Project
 
-Clone the repo to your machine:
 ```bash
 git clone https://github.com/JaiPrathikReddySoda/ai-blog-generator-interview-jaiprathikreddysoda.git
 cd ai-blog-generator-interview-jaiprathikreddysoda
@@ -51,7 +52,6 @@ cd ai-blog-generator-interview-jaiprathikreddysoda
 
 ### 2. Set Up Your Python Environment
 
-Create and activate a virtual environment to keep dependencies isolated:
 ```bash
 python3 -m venv venv
 source venv/bin/activate         
@@ -59,14 +59,11 @@ source venv/bin/activate
 
 ### 3. Install Required Packages
 
-Install all Python dependencies in one step:
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 4. Configure Environment Variables
-
-Set up your `.env` file for API keys and settings:
 
 - Copy the template:
   ```bash
@@ -85,11 +82,11 @@ Set up your `.env` file for API keys and settings:
 
 ### Run the Flask Web App
 
-Start the server:
 ```bash
 python app.py
 ```
-Open your browser and visit [http://127.0.0.1:5000/](http://127.0.0.1:5000/)  
+Open your browser and visit [http://127.0.0.1:5000/](http://127.0.0.1:5000/)
+
 Here you can:
 - Enter a keyword and generate a fresh blog post
 - View the latest automated blog from the scheduler
@@ -99,7 +96,8 @@ Here you can:
 
 ### Use the API Directly
 
-Generate a blog post via HTTP GET:
+#### Generate a Blog Post
+
 ```
 GET /generate?keyword=<your_keyword>
 ```
@@ -107,15 +105,30 @@ Example:
 ```
 http://127.0.0.1:5000/generate?keyword=ai%20tools
 ```
-You’ll get a JSON response with the title, blog content (Markdown), and SEO data.  
+Returns a JSON response with title, blog content (Markdown), and SEO data.  
 *Note: API calls do not save posts to your archive—they just return the result.*
+
+#### Get All Stored Blog Posts
+
+```
+GET /api/posts
+```
+**Query Parameters:**
+- `source=manual` or `source=scheduler` — filter by post type
+- `keyword=<text>` — search by keyword (substring, case-insensitive)
+- `limit=<N>` — limit number of results (default 50)
+
+**Example:**
+```
+http://127.0.0.1:5000/api/posts?source=scheduler&limit=10
+```
+Returns an array of blog post objects as JSON.
 
 ---
 
 ## Daily Blog Automation (Scheduler)
 
-This project includes a **built-in daily scheduler** using APScheduler.  
-Here’s how it works:
+This project includes a **built-in daily scheduler** using APScheduler.
 
 - When you start the app, the scheduler runs in the background.
 - Every day at midnight (by default), it generates a new blog post for a predefined keyword (edit `PREDEFINED_KEYWORD` in `scheduler.py` to change it).
@@ -124,6 +137,13 @@ Here’s how it works:
 **You don’t need to set up a separate cron job or shell script—just keep the Flask app running and automation works!**
 
 *If you want to use system cron jobs instead, you can adapt the `/generate` API endpoint to be called by a shell script or scheduled task.*
+
+---
+
+## Logging
+
+All major actions, API calls, scheduler events, and errors are logged using Python’s built-in logging module (`logging.info` and `logging.error`).  
+You can monitor your terminal output to trace blog generation, storage, and API activity for easier debugging and demonstration.
 
 ---
 
@@ -148,7 +168,14 @@ Here’s how it works:
 
 ## Example Output
 
-See the included `example_blog.md` for what a generated blog post looks like—complete with headings, recommendations, and SEO stats!
+See the included blogs under posts folder for seeing how generated blog post looks like—complete with headings, recommendations, and SEO stats!
+
+---
+
+## Security
+
+- All blog Markdown is rendered to HTML using the `markdown2` library to reduce risk of HTML/script injection.
+- Always validate and sanitize any integration code or user input if deploying in production.
 
 ---
 
@@ -162,5 +189,3 @@ For educational and demonstration purposes only.
 
 **Jai Prathik Reddy Soda**  
 Contact: jaiprathik.reddys@gmail.com
-
----
